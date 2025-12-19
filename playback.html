@@ -396,7 +396,7 @@
     <script>
         // Initialize map centered on Toronto
         const map = L.map('map', {
-            center: [43.6532, -79.3832],
+            center: [43.6932, -79.3532],
             zoom: 12,
             zoomControl: true,
             wheelPxPerZoomLevel: 300
@@ -426,6 +426,17 @@
 
         // Streetcar routes
         const streetcarRoutes = ['501', '502', '503', '504', '505', '506', '509', '510', '511', '512'];
+
+        // Convert time string to 12-hour format (removes date, shows only time with AM/PM)
+        function formatTime12Hour(timeStr) {
+            // Input format: "2025-12-10 06:43:30" or just time part
+            const timePart = timeStr.includes(' ') ? timeStr.split(' ')[1] : timeStr;
+            const [hours, minutes, seconds] = timePart.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes}:${seconds} ${ampm}`;
+        }
 
         function isStreetcar(routeTag) {
             return streetcarRoutes.includes(routeTag);
@@ -504,7 +515,7 @@
             // Update stats
             document.getElementById('vehicle-count').textContent = snapshot.vehicles.length;
             document.getElementById('route-count').textContent = routesInSnapshot.size;
-            document.getElementById('current-time').textContent = snapshot.t;
+            document.getElementById('current-time').textContent = formatTime12Hour(snapshot.t);
         }
 
         // Playback controls
@@ -689,9 +700,9 @@
                 const timeline = document.getElementById('timeline');
                 timeline.max = manifest.metadata.total_snapshots - 1;
                 
-                // Display time range
-                document.getElementById('start-time').textContent = manifest.metadata.start_time;
-                document.getElementById('end-time').textContent = manifest.metadata.end_time;
+                // Display time range (12-hour format, no date)
+                document.getElementById('start-time').textContent = formatTime12Hour(manifest.metadata.start_time);
+                document.getElementById('end-time').textContent = formatTime12Hour(manifest.metadata.end_time);
                 
                 // Load first chunk and display first snapshot
                 progressText.textContent = 'Loading initial data...';
