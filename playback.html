@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTC History Playback - LightBoard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            min-width: 320px;
+            backdrop-filter: blur(10px);
+            border: 2px solid #DA251D;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #info-panel h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        #stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        #playback-controls {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #DA251D;
+        }
+
+        #current-time {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 15px;
+            background: #DA251D;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+
+        #timeline-container {
+            margin-bottom: 15px;
+        }
+
+        #timeline {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #333;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #timeline::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #DA251D;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(218, 37, 29, 0.8);
+        }
+
+        #timeline::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #DA251D;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(218, 37, 29, 0.8);
+        }
+
+        #control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .control-btn {
+            background: rgba(218, 37, 29, 0.2);
+            border: 2px solid #DA251D;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(218, 37, 29, 0.4);
+            box-shadow: 0 0 15px rgba(218, 37, 29, 0.5);
+        }
+
+        .control-btn.active {
+            background: #DA251D;
+            color: #fff;
+        }
+
+        #speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #speed-control label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        #speed-slider {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #333;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        #speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #DA251D;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(218, 37, 29, 0.8);
+        }
+
+        #speed-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #DA251D;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(218, 37, 29, 0.8);
+        }
+
+        #speed-value {
+            color: #fff;
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #DA251D;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #DA251D;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #progress-text {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Custom marker styles */
+        .vehicle-marker {
+            background: none;
+            border: none;
+        }
+
+        .vehicle-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent !important;
+        }
+
+        .route-badge {
+            background: #DA251D;
+            color: #FFFFFF;
+            font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            min-width: 44px;
+            height: 24px;
+            padding: 0 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .heading-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 20px;
+            background: #DA251D;
+            transform-origin: center calc(100% + 16px);
+            border-radius: 2px;
+            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+        }
+        
+        .heading-arrow::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #DA251D;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border-radius: 8px;
+            border: 1px solid #DA251D;
+        }
+
+        .leaflet-popup-content {
+            margin: 10px;
+            font-size: 14px;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        #live-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            border: 2px solid #DA251D;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        #live-link:hover {
+            background: rgba(218, 37, 29, 0.2);
+        }
+
+        #time-range {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading History Data...</div>
+        <div id="progress-text">Please wait, this may take a moment</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="info-panel">
+        <h1 style="font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; align-items: center; gap: 10px;">
+            <img src="Images/TTC.png" alt="TTC" style="height: 50px;">
+            History Playback
+        </h1>
+        
+        <div id="playback-controls">
+            <div id="current-time">Loading...</div>
+            
+            <div id="timeline-container">
+                <input type="range" id="timeline" min="0" max="100" value="0">
+                <div id="time-range">
+                    <span id="start-time">--:--</span>
+                    <span id="end-time">--:--</span>
+                </div>
+            </div>
+            
+            <div id="control-buttons">
+                <button class="control-btn" id="step-back" title="Step Back">⏮</button>
+                <button class="control-btn" id="play-btn" title="Play/Pause">▶</button>
+                <button class="control-btn" id="step-forward" title="Step Forward">⏭</button>
+            </div>
+            
+            <div id="speed-control">
+                <label>Speed:</label>
+                <input type="range" id="speed-slider" min="1" max="15" value="1" step="1">
+                <span id="speed-value">1x</span>
+            </div>
+        </div>
+
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-value" id="vehicle-count">0</div>
+                <div class="stat-label">Vehicles</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="route-count">0</div>
+                <div class="stat-label">Routes</div>
+            </div>
+        </div>
+    </div>
+
+    <a id="live-link" href="index.html">🔴 Live View</a>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map centered on Toronto
+        const map = L.map('map', {
+            center: [43.6532, -79.3832],
+            zoom: 12,
+            zoomControl: true,
+            wheelPxPerZoomLevel: 300
+        });
+
+        // Add Esri World Imagery satellite layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri',
+            maxZoom: 19
+        }).addTo(map);
+
+        // State
+        let manifest = null;
+        let loadedChunks = {}; // Cache for loaded chunks
+        let allSnapshots = []; // Flattened array of all snapshots (loaded on demand)
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playbackSpeed = 1; // frames per second equivalent
+        let playbackInterval = null;
+        const vehicleMarkers = {};
+        const CHUNK_DIR = 'history_chunks'; // Directory containing chunk files
+
+        // Streetcar routes
+        const streetcarRoutes = ['501', '502', '503', '504', '505', '506', '509', '510', '511', '512'];
+
+        function isStreetcar(routeTag) {
+            return streetcarRoutes.includes(routeTag);
+        }
+
+        // Create TTC-style route badge icon with direction arrow
+        function createVehicleIcon(routeTag, heading, speed) {
+            const spd = parseFloat(speed) || 0;
+            const isMoving = spd > 0 && heading !== null && heading !== undefined;
+            const rotation = parseFloat(heading) || 0;
+            
+            let arrowHtml = '';
+            if (isMoving) {
+                arrowHtml = `<div class="heading-arrow" style="transform: translate(-50%, calc(-100% - 16px)) rotate(${rotation}deg);"></div>`;
+            }
+            
+            const html = `<div class="vehicle-icon">
+                ${arrowHtml}
+                <div class="route-badge">${routeTag}</div>
+            </div>`;
+            
+            return L.divIcon({
+                className: 'vehicle-marker',
+                html: html,
+                iconSize: [80, 80],
+                iconAnchor: [40, 40],
+                popupAnchor: [0, -20]
+            });
+        }
+
+        // Update markers for a snapshot
+        function displaySnapshot(snapshot) {
+            const currentVehicleIds = new Set();
+            const routesInSnapshot = new Set();
+
+            snapshot.vehicles.forEach(v => {
+                const id = `${v.r}_${v.vid}`;
+                currentVehicleIds.add(id);
+                routesInSnapshot.add(v.r);
+
+                const vehicleType = isStreetcar(v.r) ? '🚊 Streetcar' : '🚌 Bus';
+                const movementStatus = v.spd > 0 ? '🟢 Moving' : '🔴 Stopped';
+                const popupContent = `
+                    <div style="font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                        <div style="display: inline-flex; align-items: center; justify-content: center; background: #DA251D; color: white; min-width: 44px; height: 24px; padding: 0 10px; border-radius: 5px; font-weight: bold; margin-bottom: 8px;">
+                            ${v.r}
+                        </div>
+                        <strong style="margin-left: 8px;">${vehicleType}</strong><br>
+                        Status: ${movementStatus}<br>
+                        Speed: ${v.spd} km/h<br>
+                        Heading: ${v.hdg}°<br>
+                        Vehicle ID: ${v.vid}
+                    </div>
+                `;
+
+                if (vehicleMarkers[id]) {
+                    vehicleMarkers[id].setLatLng([v.lat, v.lon]);
+                    vehicleMarkers[id].setIcon(createVehicleIcon(v.r, v.hdg, v.spd));
+                    vehicleMarkers[id].getPopup().setContent(popupContent);
+                } else {
+                    const icon = createVehicleIcon(v.r, v.hdg, v.spd);
+                    vehicleMarkers[id] = L.marker([v.lat, v.lon], { icon })
+                        .bindPopup(popupContent)
+                        .addTo(map);
+                }
+            });
+
+            // Remove old markers
+            Object.keys(vehicleMarkers).forEach(id => {
+                if (!currentVehicleIds.has(id)) {
+                    map.removeLayer(vehicleMarkers[id]);
+                    delete vehicleMarkers[id];
+                }
+            });
+
+            // Update stats
+            document.getElementById('vehicle-count').textContent = snapshot.vehicles.length;
+            document.getElementById('route-count').textContent = routesInSnapshot.size;
+            document.getElementById('current-time').textContent = snapshot.t;
+        }
+
+        // Playback controls
+        function play() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('play-btn').textContent = '⏸';
+            document.getElementById('play-btn').classList.add('active');
+            
+            const interval = 1000 / playbackSpeed;
+            playbackInterval = setInterval(async () => {
+                if (currentIndex < manifest.metadata.total_snapshots - 1) {
+                    currentIndex++;
+                    await updatePlayback();
+                } else {
+                    pause();
+                }
+            }, interval);
+        }
+
+        function pause() {
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶';
+            document.getElementById('play-btn').classList.remove('active');
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+
+        function togglePlayPause() {
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        }
+
+        async function stepForward() {
+            pause();
+            if (currentIndex < manifest.metadata.total_snapshots - 1) {
+                currentIndex++;
+                await updatePlayback();
+            }
+        }
+
+        async function stepBack() {
+            pause();
+            if (currentIndex > 0) {
+                currentIndex--;
+                await updatePlayback();
+            }
+        }
+
+        async function updatePlayback() {
+            const snapshot = await getSnapshot(currentIndex);
+            if (snapshot) {
+                displaySnapshot(snapshot);
+            }
+            
+            // Update timeline slider
+            const timeline = document.getElementById('timeline');
+            timeline.value = currentIndex;
+            
+            // Preload adjacent chunks for smooth playback
+            const currentChunk = getChunkForIndex(currentIndex);
+            preloadAdjacentChunks(currentChunk);
+        }
+
+        async function seekTo(index) {
+            currentIndex = parseInt(index);
+            await updatePlayback();
+        }
+
+        function updateSpeed(speed) {
+            playbackSpeed = parseInt(speed);
+            document.getElementById('speed-value').textContent = `${playbackSpeed}x`;
+            
+            // If playing, restart with new speed
+            if (isPlaying) {
+                pause();
+                play();
+            }
+        }
+
+        // Find which chunk contains a given snapshot index
+        function getChunkForIndex(index) {
+            for (let i = 0; i < manifest.chunks.length; i++) {
+                const chunk = manifest.chunks[i];
+                if (index >= chunk.start_index && index <= chunk.end_index) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // Load a specific chunk
+        async function loadChunk(chunkIndex) {
+            if (loadedChunks[chunkIndex]) {
+                return loadedChunks[chunkIndex];
+            }
+            
+            const chunkInfo = manifest.chunks[chunkIndex];
+            console.log(`Loading chunk ${chunkIndex}: ${chunkInfo.file}`);
+            
+            const response = await fetch(`${CHUNK_DIR}/${chunkInfo.file}`);
+            const chunkData = await response.json();
+            
+            loadedChunks[chunkIndex] = chunkData;
+            return chunkData;
+        }
+
+        // Get snapshot at a specific index (loads chunk if needed)
+        async function getSnapshot(index) {
+            const chunkIndex = getChunkForIndex(index);
+            if (chunkIndex === -1) return null;
+            
+            const chunk = await loadChunk(chunkIndex);
+            const chunkInfo = manifest.chunks[chunkIndex];
+            const localIndex = index - chunkInfo.start_index;
+            
+            return chunk[localIndex];
+        }
+
+        // Preload adjacent chunks for smooth playback
+        async function preloadAdjacentChunks(currentChunkIndex) {
+            const chunksToPreload = [currentChunkIndex - 1, currentChunkIndex + 1];
+            
+            for (const idx of chunksToPreload) {
+                if (idx >= 0 && idx < manifest.chunks.length && !loadedChunks[idx]) {
+                    // Load in background without awaiting
+                    loadChunk(idx).catch(() => {});
+                }
+            }
+        }
+
+        // Load manifest and initialize
+        async function loadHistoryData() {
+            const loading = document.getElementById('loading');
+            const progressText = document.getElementById('progress-text');
+            
+            try {
+                progressText.textContent = 'Loading manifest...';
+                const response = await fetch(`${CHUNK_DIR}/manifest.json`);
+                manifest = await response.json();
+                
+                console.log('Loaded manifest:', manifest.metadata);
+                console.log(`Total chunks: ${manifest.chunks.length}`);
+                console.log(`Total snapshots: ${manifest.metadata.total_snapshots}`);
+                
+                // Setup timeline
+                const timeline = document.getElementById('timeline');
+                timeline.max = manifest.metadata.total_snapshots - 1;
+                
+                // Display time range
+                document.getElementById('start-time').textContent = manifest.metadata.start_time;
+                document.getElementById('end-time').textContent = manifest.metadata.end_time;
+                
+                // Load first chunk and display first snapshot
+                progressText.textContent = 'Loading initial data...';
+                currentIndex = 0;
+                const firstSnapshot = await getSnapshot(0);
+                if (firstSnapshot) {
+                    displaySnapshot(firstSnapshot);
+                }
+                
+                // Preload second chunk
+                preloadAdjacentChunks(0);
+                
+                // Hide loading
+                loading.classList.add('hidden');
+                
+                console.log('Playback ready!');
+                
+            } catch (error) {
+                console.error('Error loading history:', error);
+                progressText.textContent = 'Error loading data. Check console.';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('play-btn').addEventListener('click', togglePlayPause);
+        document.getElementById('step-forward').addEventListener('click', () => stepForward());
+        document.getElementById('step-back').addEventListener('click', () => stepBack());
+        document.getElementById('timeline').addEventListener('input', (e) => seekTo(e.target.value));
+        document.getElementById('speed-slider').addEventListener('input', (e) => updateSpeed(e.target.value));
+
+        // Keyboard shortcuts
+        const PAN_AMOUNT = 75; // pixels to pan per keypress
+
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in an input
+            if (e.target.tagName === 'INPUT') return;
+            
+            switch(e.key) {
+                // Play/Pause
+                case ' ':
+                    e.preventDefault();
+                    togglePlayPause();
+                    break;
+                
+                // Timeline: [ and ] for step back/forward
+                case '[':
+                    stepBack().catch(() => {});
+                    break;
+                case ']':
+                    stepForward().catch(() => {});
+                    break;
+                
+                // Map panning with Arrow Keys
+                case 'ArrowUp':
+                    e.preventDefault();
+                    map.panBy([0, -PAN_AMOUNT]);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    map.panBy([0, PAN_AMOUNT]);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    map.panBy([-PAN_AMOUNT, 0]);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    map.panBy([PAN_AMOUNT, 0]);
+                    break;
+                
+                // Map panning with WASD
+                case 'w':
+                case 'W':
+                    map.panBy([0, -PAN_AMOUNT]);
+                    break;
+                case 's':
+                case 'S':
+                    map.panBy([0, PAN_AMOUNT]);
+                    break;
+                case 'a':
+                case 'A':
+                    map.panBy([-PAN_AMOUNT, 0]);
+                    break;
+                case 'd':
+                case 'D':
+                    map.panBy([PAN_AMOUNT, 0]);
+                    break;
+                
+                // Zoom with +/- or Q/E
+                case '+':
+                case '=':
+                case 'e':
+                case 'E':
+                    map.setZoom(map.getZoom() + 0.25);
+                    break;
+                case '-':
+                case 'q':
+                case 'Q':
+                    map.setZoom(map.getZoom() - 0.25);
+                    break;
+                
+                // Fullscreen
+                case 'f':
+                case 'F':
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen();
+                    } else {
+                        document.exitFullscreen();
+                    }
+                    break;
+            }
+        });
+
+        // Initialize
+        loadHistoryData();
+    </script>
+</body>
+</html>

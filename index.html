@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTC Live Vehicle Tracker - LightBoard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            border: 2px solid #DA251D;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #info-panel h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        #stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        #last-update {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #DA251D;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #DA251D;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom marker styles */
+        .vehicle-marker {
+            background: none;
+            border: none;
+        }
+
+        .vehicle-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent !important;
+        }
+
+        /* TTC-style route badge - 1.85:1 aspect ratio */
+        .route-badge {
+            background: #DA251D; /* TTC red */
+            color: #FFFFFF;
+            font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            min-width: 44px;
+            height: 24px;
+            padding: 0 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* Heading arrow - points from edge of badge in direction of travel */
+        .heading-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 20px;
+            background: #DA251D;
+            transform-origin: center calc(100% + 16px);
+            border-radius: 2px;
+            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+        }
+        
+        .heading-arrow::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #DA251D;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border-radius: 8px;
+            border: 1px solid #DA251D;
+        }
+
+        .leaflet-popup-content {
+            margin: 10px;
+            font-size: 14px;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        #toggle-panel {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+            border: 2px solid #DA251D;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #toggle-panel:hover {
+            background: rgba(218, 37, 29, 0.2);
+            box-shadow: 0 0 15px rgba(218, 37, 29, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading TTC Vehicle Data...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="info-panel">
+        <h1 style="font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; align-items: center; gap: 10px;">
+            <img src="Images/TTC.png" alt="TTC" style="height: 50px;">
+            Live Tracker
+        </h1>
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-value" id="vehicle-count">0</div>
+                <div class="stat-label">Active Vehicles</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="route-count">0</div>
+                <div class="stat-label">Active Routes</div>
+            </div>
+        </div>
+        <div id="last-update">Last updated: Never</div>
+    </div>
+
+    <div id="toggle-panel" onclick="togglePanel()">
+        Toggle Info
+    </div>
+
+    <a id="history-link" href="playback.html" style="
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 10px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        border: 2px solid #DA251D;
+        color: #fff;
+        text-decoration: none;
+        font-size: 14px;
+    ">📼 History Playback</a>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map centered on Toronto
+        const map = L.map('map', {
+            center: [43.6532, -79.3832],
+            zoom: 12,
+            zoomControl: true,
+            wheelPxPerZoomLevel: 300
+        });
+
+        // Add Esri World Imagery satellite layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Alternative tile layers (uncomment to use):
+        // Dark theme:
+        // L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        //     attribution: '© OpenStreetMap © CartoDB',
+        //     maxZoom: 19
+        // }).addTo(map);
+        
+        // Standard street map:
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '© OpenStreetMap'
+        // }).addTo(map);
+
+        // Store vehicle markers and route data
+        const vehicleMarkers = {};
+        const routeColors = {};
+        let allRoutes = [];
+
+        // API Configuration
+        const API_BASE = 'https://retro.umoiq.com/service/publicJSONFeed';
+        const AGENCY = 'ttc';
+        const UPDATE_INTERVAL = 5000; // 5 seconds
+
+        // Fetch list of all routes
+        async function fetchRoutes() {
+            try {
+                const response = await fetch(`${API_BASE}?command=routeList&a=${AGENCY}`);
+                const data = await response.json();
+                
+                if (data.route && Array.isArray(data.route)) {
+                    allRoutes = data.route.map(route => route.tag);
+                    console.log(`Found ${allRoutes.length} routes:`, allRoutes);
+                    return allRoutes;
+                }
+                return [];
+            } catch (error) {
+                console.error('Error fetching routes:', error);
+                return [];
+            }
+        }
+
+        // Fetch vehicles for a specific route
+        async function fetchVehiclesForRoute(routeTag) {
+            try {
+                const response = await fetch(
+                    `${API_BASE}?command=vehicleLocations&a=${AGENCY}&r=${routeTag}&t=0`
+                );
+                const data = await response.json();
+                
+                if (data.vehicle) {
+                    // Handle both single vehicle and array of vehicles
+                    return Array.isArray(data.vehicle) ? data.vehicle : [data.vehicle];
+                }
+                return [];
+            } catch (error) {
+                console.error(`Error fetching vehicles for route ${routeTag}:`, error);
+                return [];
+            }
+        }
+
+        // Fetch all vehicles for all routes
+        async function fetchAllVehicles() {
+            const allVehicles = [];
+            const routesWithVehicles = new Set();
+
+            // Fetch vehicles for each route in parallel
+            const promises = allRoutes.map(async (routeTag) => {
+                const vehicles = await fetchVehiclesForRoute(routeTag);
+                vehicles.forEach(vehicle => {
+                    vehicle.routeTag = routeTag; // Ensure routeTag is set
+                    allVehicles.push(vehicle);
+                    routesWithVehicles.add(routeTag);
+                });
+            });
+
+            await Promise.all(promises);
+
+            console.log(`Fetched ${allVehicles.length} vehicles across ${routesWithVehicles.size} routes`);
+            return { vehicles: allVehicles, activeRoutes: routesWithVehicles.size };
+        }
+
+        // Determine if route is a streetcar or bus
+        function isStreetcar(routeTag) {
+            const streetcarRoutes = ['501', '502', '503', '504', '505', '506', '509', '510', '511', '512'];
+            return streetcarRoutes.includes(routeTag);
+        }
+
+        // Create TTC-style route badge icon with direction arrow
+        function createVehicleIcon(routeTag, heading, speedKmHr) {
+            const speed = parseFloat(speedKmHr) || 0;
+            const isMoving = speed > 0 && heading && heading !== '-4';
+            const rotation = parseFloat(heading) || 0;
+            
+            // Create arrow pointing from edge of badge in the heading direction
+            let arrowHtml = '';
+            if (isMoving) {
+                // Arrow points up by default (0°), rotate to match heading
+                // Offset by -100% - 16px to clear the badge
+                arrowHtml = `<div class="heading-arrow" style="transform: translate(-50%, calc(-100% - 16px)) rotate(${rotation}deg);"></div>`;
+            }
+            
+            const html = `<div class="vehicle-icon">
+                ${arrowHtml}
+                <div class="route-badge">${routeTag}</div>
+            </div>`;
+            
+            return L.divIcon({
+                className: 'vehicle-marker',
+                html: html,
+                iconSize: [80, 80],
+                iconAnchor: [40, 40],
+                popupAnchor: [0, -20]
+            });
+        }
+
+        // Update vehicle markers on the map
+        function updateVehicleMarkers(vehicles) {
+            const currentVehicleIds = new Set();
+
+            vehicles.forEach(vehicle => {
+                const lat = parseFloat(vehicle.lat);
+                const lon = parseFloat(vehicle.lon);
+                const id = vehicle.id;
+                const routeTag = vehicle.routeTag;
+                const heading = vehicle.heading;
+                const speedKmHr = vehicle.speedKmHr;
+
+                currentVehicleIds.add(id);
+
+                // Create popup content with TTC styling
+                const vehicleType = isStreetcar(routeTag) ? '🚊 Streetcar' : '🚌 Bus';
+                const speed = parseFloat(speedKmHr) || 0; 
+                const movementStatus = speed > 0 ? '🟢 Moving' : '🔴 Stopped';
+                const popupContent = `
+                    <div style="font-family: 'Swiss 721 BT', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                        <div style="display: inline-flex; align-items: center; justify-content: center; background: #DA251D; color: white; min-width: 44px; height: 24px; padding: 0 10px; border-radius: 5px; font-weight: bold; margin-bottom: 8px;">
+                            ${routeTag}
+                        </div>
+                        <strong style="margin-left: 8px;">${vehicleType}</strong><br>
+                        Status: ${movementStatus}<br>
+                        Speed: ${speedKmHr} km/h<br>
+                        Heading: ${heading}°<br>
+                        Vehicle ID: ${id}<br>
+                        ${vehicle.predictable === 'true' ? '✅ Predictable' : '⚠️ Not Predictable'}<br>
+                        <small>Updated ${vehicle.secsSinceReport}s ago</small>
+                    </div>
+                `;
+
+                if (vehicleMarkers[id]) {
+                    // Update existing marker position and icon (in case heading changed)
+                    vehicleMarkers[id].setLatLng([lat, lon]);
+                    vehicleMarkers[id].setIcon(createVehicleIcon(routeTag, heading, speedKmHr));
+                    vehicleMarkers[id].getPopup().setContent(popupContent);
+                } else {
+                    // Create new marker
+                    const icon = createVehicleIcon(routeTag, heading, speedKmHr);
+                    vehicleMarkers[id] = L.marker([lat, lon], { icon })
+                        .bindPopup(popupContent)
+                        .addTo(map);
+                }
+            });
+
+            // Remove markers for vehicles that are no longer active
+            Object.keys(vehicleMarkers).forEach(id => {
+                if (!currentVehicleIds.has(id)) {
+                    map.removeLayer(vehicleMarkers[id]);
+                    delete vehicleMarkers[id];
+                }
+            });
+        }
+
+        // Update statistics display
+        function updateStats(vehicleCount, routeCount) {
+            document.getElementById('vehicle-count').textContent = vehicleCount;
+            document.getElementById('route-count').textContent = routeCount;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('last-update').textContent = `Last updated: ${timeString}`;
+        }
+
+        // Main update function
+        async function updateMap() {
+            try {
+                const { vehicles, activeRoutes } = await fetchAllVehicles();
+                updateVehicleMarkers(vehicles);
+                updateStats(vehicles.length, activeRoutes);
+            } catch (error) {
+                console.error('Error updating map:', error);
+            }
+        }
+
+        // Toggle info panel visibility
+        function togglePanel() {
+            const panel = document.getElementById('info-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Initialize the application
+        async function init() {
+            const loading = document.getElementById('loading');
+            
+            try {
+                // Fetch route list first
+                await fetchRoutes();
+                
+                // Initial update
+                await updateMap();
+                
+                // Hide loading screen
+                loading.classList.add('hidden');
+                
+                // Set up automatic updates every 10 seconds
+                setInterval(updateMap, UPDATE_INTERVAL);
+                
+                console.log('TTC Live Tracker initialized successfully');
+                console.log(`Updating every ${UPDATE_INTERVAL / 1000} seconds`);
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                loading.innerHTML = '<div>Error loading data. Please refresh.</div>';
+            }
+        }
+
+        // Start the application
+        init();
+
+        // Keyboard shortcuts
+        const PAN_AMOUNT = 75; // pixels to pan per keypress
+
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in an input
+            if (e.target.tagName === 'INPUT') return;
+            
+            switch(e.key) {
+                // Map panning with Arrow Keys
+                case 'ArrowUp':
+                    e.preventDefault();
+                    map.panBy([0, -PAN_AMOUNT]);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    map.panBy([0, PAN_AMOUNT]);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    map.panBy([-PAN_AMOUNT, 0]);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    map.panBy([PAN_AMOUNT, 0]);
+                    break;
+                
+                // Map panning with WASD
+                case 'w':
+                case 'W':
+                    map.panBy([0, -PAN_AMOUNT]);
+                    break;
+                case 's':
+                case 'S':
+                    map.panBy([0, PAN_AMOUNT]);
+                    break;
+                case 'a':
+                case 'A':
+                    map.panBy([-PAN_AMOUNT, 0]);
+                    break;
+                case 'd':
+                case 'D':
+                    map.panBy([PAN_AMOUNT, 0]);
+                    break;
+                
+                // Zoom with +/- or Q/E
+                case '+':
+                case '=':
+                case 'e':
+                case 'E':
+                map.setZoom(map.getZoom() + 0.25);
+                    break;
+                case '-':
+                case 'q':
+                case 'Q':
+                map.setZoom(map.getZoom() - 0.25);
+                    break;
+                
+                // Fullscreen
+                case 'f':
+                case 'F':
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen();
+                    } else {
+                        document.exitFullscreen();
+                    }
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
+

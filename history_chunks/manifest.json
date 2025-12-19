@@ -1,0 +1,248 @@
+{
+  "metadata": {
+    "start_time": "2025-12-09 21:35:35",
+    "end_time": "2025-12-10 23:59:58",
+    "timezone": "America/Toronto (Eastern)",
+    "interval_seconds": 30,
+    "total_snapshots": 3032,
+    "snapshots_per_chunk": 120,
+    "total_chunks": 26,
+    "generated_at": "2025-12-18T21:34:39.983679"
+  },
+  "chunks": [
+    {
+      "file": "chunk_0000.json",
+      "start_index": 0,
+      "end_index": 119,
+      "start_time": "2025-12-09 21:35:30",
+      "end_time": "2025-12-09 23:35:00",
+      "snapshot_count": 120,
+      "size_bytes": 6437127
+    },
+    {
+      "file": "chunk_0001.json",
+      "start_index": 120,
+      "end_index": 239,
+      "start_time": "2025-12-09 23:35:30",
+      "end_time": "2025-12-10 00:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 6259829
+    },
+    {
+      "file": "chunk_0002.json",
+      "start_index": 240,
+      "end_index": 359,
+      "start_time": "2025-12-10 00:43:30",
+      "end_time": "2025-12-10 01:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 5359847
+    },
+    {
+      "file": "chunk_0003.json",
+      "start_index": 360,
+      "end_index": 479,
+      "start_time": "2025-12-10 01:43:30",
+      "end_time": "2025-12-10 02:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 3058971
+    },
+    {
+      "file": "chunk_0004.json",
+      "start_index": 480,
+      "end_index": 599,
+      "start_time": "2025-12-10 02:43:30",
+      "end_time": "2025-12-10 03:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 1802078
+    },
+    {
+      "file": "chunk_0005.json",
+      "start_index": 600,
+      "end_index": 719,
+      "start_time": "2025-12-10 03:43:30",
+      "end_time": "2025-12-10 04:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 2379342
+    },
+    {
+      "file": "chunk_0006.json",
+      "start_index": 720,
+      "end_index": 839,
+      "start_time": "2025-12-10 04:43:30",
+      "end_time": "2025-12-10 05:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 6708927
+    },
+    {
+      "file": "chunk_0007.json",
+      "start_index": 840,
+      "end_index": 959,
+      "start_time": "2025-12-10 05:43:30",
+      "end_time": "2025-12-10 06:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 11416680
+    },
+    {
+      "file": "chunk_0008.json",
+      "start_index": 960,
+      "end_index": 1079,
+      "start_time": "2025-12-10 06:43:30",
+      "end_time": "2025-12-10 07:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 13453866
+    },
+    {
+      "file": "chunk_0009.json",
+      "start_index": 1080,
+      "end_index": 1199,
+      "start_time": "2025-12-10 07:43:30",
+      "end_time": "2025-12-10 08:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 14044625
+    },
+    {
+      "file": "chunk_0010.json",
+      "start_index": 1200,
+      "end_index": 1319,
+      "start_time": "2025-12-10 08:43:30",
+      "end_time": "2025-12-10 09:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 13472166
+    },
+    {
+      "file": "chunk_0011.json",
+      "start_index": 1320,
+      "end_index": 1439,
+      "start_time": "2025-12-10 09:43:30",
+      "end_time": "2025-12-10 10:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 11248190
+    },
+    {
+      "file": "chunk_0012.json",
+      "start_index": 1440,
+      "end_index": 1559,
+      "start_time": "2025-12-10 10:43:30",
+      "end_time": "2025-12-10 11:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 10560319
+    },
+    {
+      "file": "chunk_0013.json",
+      "start_index": 1560,
+      "end_index": 1679,
+      "start_time": "2025-12-10 11:43:30",
+      "end_time": "2025-12-10 12:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 10474741
+    },
+    {
+      "file": "chunk_0014.json",
+      "start_index": 1680,
+      "end_index": 1799,
+      "start_time": "2025-12-10 12:43:30",
+      "end_time": "2025-12-10 13:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 10721365
+    },
+    {
+      "file": "chunk_0015.json",
+      "start_index": 1800,
+      "end_index": 1919,
+      "start_time": "2025-12-10 13:43:30",
+      "end_time": "2025-12-10 14:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 12529004
+    },
+    {
+      "file": "chunk_0016.json",
+      "start_index": 1920,
+      "end_index": 2039,
+      "start_time": "2025-12-10 14:43:30",
+      "end_time": "2025-12-10 15:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 14433919
+    },
+    {
+      "file": "chunk_0017.json",
+      "start_index": 2040,
+      "end_index": 2159,
+      "start_time": "2025-12-10 15:43:30",
+      "end_time": "2025-12-10 16:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 14515770
+    },
+    {
+      "file": "chunk_0018.json",
+      "start_index": 2160,
+      "end_index": 2279,
+      "start_time": "2025-12-10 16:43:30",
+      "end_time": "2025-12-10 17:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 14405658
+    },
+    {
+      "file": "chunk_0019.json",
+      "start_index": 2280,
+      "end_index": 2399,
+      "start_time": "2025-12-10 17:43:30",
+      "end_time": "2025-12-10 18:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 14121916
+    },
+    {
+      "file": "chunk_0020.json",
+      "start_index": 2400,
+      "end_index": 2519,
+      "start_time": "2025-12-10 18:43:30",
+      "end_time": "2025-12-10 19:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 12059289
+    },
+    {
+      "file": "chunk_0021.json",
+      "start_index": 2520,
+      "end_index": 2639,
+      "start_time": "2025-12-10 19:43:30",
+      "end_time": "2025-12-10 20:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 9428950
+    },
+    {
+      "file": "chunk_0022.json",
+      "start_index": 2640,
+      "end_index": 2759,
+      "start_time": "2025-12-10 20:43:30",
+      "end_time": "2025-12-10 21:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 8944902
+    },
+    {
+      "file": "chunk_0023.json",
+      "start_index": 2760,
+      "end_index": 2879,
+      "start_time": "2025-12-10 21:43:30",
+      "end_time": "2025-12-10 22:43:00",
+      "snapshot_count": 120,
+      "size_bytes": 7971265
+    },
+    {
+      "file": "chunk_0024.json",
+      "start_index": 2880,
+      "end_index": 2999,
+      "start_time": "2025-12-10 22:43:30",
+      "end_time": "2025-12-10 23:43:30",
+      "snapshot_count": 120,
+      "size_bytes": 6517707
+    },
+    {
+      "file": "chunk_0025.json",
+      "start_index": 3000,
+      "end_index": 3031,
+      "start_time": "2025-12-10 23:44:00",
+      "end_time": "2025-12-10 23:59:30",
+      "snapshot_count": 32,
+      "size_bytes": 1680294
+    }
+  ]
+}
