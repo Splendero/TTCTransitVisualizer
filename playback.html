@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTC History Playback - LightBoard</title>
+    <link rel="icon" href="Images/TTC.png" type="image/png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -417,6 +418,11 @@
         let playbackInterval = null;
         const vehicleMarkers = {};
         const CHUNK_DIR = 'history_chunks'; // Directory containing chunk files
+        
+        // Seek state management
+        let isLoading = false;
+        let pendingSeekIndex = null;
+        let seekDebounceTimer = null;
 
         // Streetcar routes
         const streetcarRoutes = ['501', '502', '503', '504', '505', '506', '509', '510', '511', '512'];
@@ -510,6 +516,9 @@
             
             const interval = 1000 / playbackSpeed;
             playbackInterval = setInterval(async () => {
+                // Skip this tick if we're still loading the previous frame
+                if (isLoading) return;
+                
                 if (currentIndex < manifest.metadata.total_snapshots - 1) {
                     currentIndex++;
                     await updatePlayback();
@@ -554,23 +563,50 @@
         }
 
         async function updatePlayback() {
-            const snapshot = await getSnapshot(currentIndex);
-            if (snapshot) {
-                displaySnapshot(snapshot);
+            isLoading = true;
+            
+            try {
+                const snapshot = await getSnapshot(currentIndex);
+                if (snapshot) {
+                    displaySnapshot(snapshot);
+                }
+                
+                // Update timeline slider
+                const timeline = document.getElementById('timeline');
+                timeline.value = currentIndex;
+                
+                // Preload adjacent chunks for smooth playback
+                const currentChunk = getChunkForIndex(currentIndex);
+                preloadAdjacentChunks(currentChunk);
+            } finally {
+                isLoading = false;
             }
-            
-            // Update timeline slider
-            const timeline = document.getElementById('timeline');
-            timeline.value = currentIndex;
-            
-            // Preload adjacent chunks for smooth playback
-            const currentChunk = getChunkForIndex(currentIndex);
-            preloadAdjacentChunks(currentChunk);
         }
 
         async function seekTo(index) {
-            currentIndex = parseInt(index);
+            const targetIndex = parseInt(index);
+            
+            // Pause playback during seeks
+            const wasPlaying = isPlaying;
+            if (wasPlaying) {
+                pause();
+            }
+            
+            // If already loading, queue this seek and return
+            if (isLoading) {
+                pendingSeekIndex = targetIndex;
+                return;
+            }
+            
+            currentIndex = targetIndex;
             await updatePlayback();
+            
+            // Process any pending seek that came in while we were loading
+            if (pendingSeekIndex !== null && pendingSeekIndex !== currentIndex) {
+                const nextSeek = pendingSeekIndex;
+                pendingSeekIndex = null;
+                await seekTo(nextSeek);
+            }
         }
 
         function updateSpeed(speed) {
@@ -683,7 +719,19 @@
         document.getElementById('play-btn').addEventListener('click', togglePlayPause);
         document.getElementById('step-forward').addEventListener('click', () => stepForward());
         document.getElementById('step-back').addEventListener('click', () => stepBack());
-        document.getElementById('timeline').addEventListener('input', (e) => seekTo(e.target.value));
+        document.getElementById('timeline').addEventListener('input', (e) => {
+            // Clear any pending debounce
+            if (seekDebounceTimer) {
+                clearTimeout(seekDebounceTimer);
+            }
+            
+            const targetIndex = parseInt(e.target.value);
+            
+            // Debounce the actual seek to avoid flooding with requests
+            seekDebounceTimer = setTimeout(() => {
+                seekTo(targetIndex);
+            }, 50); // 50ms debounce
+        });
         document.getElementById('speed-slider').addEventListener('input', (e) => updateSpeed(e.target.value));
 
         // Keyboard shortcuts
